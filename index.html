@@ -67,10 +67,13 @@
         .bottom-bar { margin: 18px 0 4px; padding: 14px 18px; color: #8090a5; text-align: center; font-size: 12px; }
         .bottom-bar a { color: #536982 !important; font-weight: 700; text-decoration: none !important; }
         .menu-toggle { display: none; }
+        .menu-backdrop { display: none; }
 
         @media (max-width: 800px) {
             .sidebar { width: min(320px, 88vw); padding-top: 22px; transform: translateX(-102%); visibility: hidden; transition: transform .3s cubic-bezier(.2,.8,.2,1), visibility .3s; box-shadow: 18px 0 48px #09152833; }
             .sidebar.show { transform: translateX(0); visibility: visible; }
+            .menu-backdrop { position: fixed; inset: 0; z-index: 4; display: block; border: 0; background: #08132666; opacity: 0; visibility: hidden; transition: opacity .25s ease, visibility .25s; }
+            .menu-backdrop.show { opacity: 1; visibility: visible; }
             .menu-toggle { position: fixed; top: 14px; right: 14px; z-index: 10; display: inline-flex; align-items: center; gap: 9px; padding: 11px 15px; border: 1px solid #e4eaf2; border-radius: 13px; background: #ffffffed; color: var(--ink); box-shadow: 0 8px 28px #17263b14; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; backdrop-filter: blur(12px); }
             .menu-icon { display: grid; gap: 4px; }
             .menu-icon i { display: block; width: 15px; height: 2px; border-radius: 2px; background: currentColor; }
@@ -94,6 +97,7 @@
 
     <!-- Кнопка открытия меню на мобильных -->
     <button class="menu-toggle" type="button" aria-controls="sidebar" aria-expanded="false" onclick="toggleMenu()"><span class="menu-icon" aria-hidden="true"><i></i><i></i><i></i></span>Разделы</button>
+    <button class="menu-backdrop" type="button" aria-label="Закрыть меню" onclick="closeMenu()"></button>
 
     <!-- Левое меню -->
     <nav class="sidebar" id="sidebar" aria-label="Разделы инструкции">
@@ -253,17 +257,39 @@
             var button = document.querySelector(".menu-toggle");
             var isOpen = sidebar.classList.toggle("show");
             button.setAttribute("aria-expanded", String(isOpen));
+            document.querySelector(".menu-backdrop").classList.toggle("show", isOpen);
         }
 
-        document.querySelectorAll(".sidebar a[href^='#section']").forEach(function (link) {
+        function closeMenu() {
+            document.getElementById("sidebar").classList.remove("show");
+            document.querySelector(".menu-toggle").setAttribute("aria-expanded", "false");
+            document.querySelector(".menu-backdrop").classList.remove("show");
+        }
+
+        var sectionLinks = document.querySelectorAll(".sidebar a[href^='#section']");
+        sectionLinks.forEach(function (link) {
             link.addEventListener("click", function () {
-                document.querySelectorAll(".sidebar a.active").forEach(function (active) { active.classList.remove("active"); });
-                link.classList.add("active");
-                if (window.matchMedia("(max-width: 800px)").matches) {
-                    document.getElementById("sidebar").classList.remove("show");
-                    document.querySelector(".menu-toggle").setAttribute("aria-expanded", "false");
-                }
+                if (window.matchMedia("(max-width: 800px)").matches) closeMenu();
             });
+        });
+
+        if ("IntersectionObserver" in window) {
+            var sectionObserver = new IntersectionObserver(function (entries) {
+                entries.forEach(function (entry) {
+                    if (!entry.isIntersecting) return;
+                    sectionLinks.forEach(function (link) {
+                        var isCurrent = link.getAttribute("href") === "#" + entry.target.id;
+                        link.classList.toggle("active", isCurrent);
+                        if (isCurrent) link.setAttribute("aria-current", "location");
+                        else link.removeAttribute("aria-current");
+                    });
+                });
+            }, { rootMargin: "-15% 0px -70% 0px" });
+            document.querySelectorAll(".section[id]").forEach(function (section) { sectionObserver.observe(section); });
+        }
+
+        document.addEventListener("keydown", function (event) {
+            if (event.key === "Escape") closeMenu();
         });
     </script>
 
